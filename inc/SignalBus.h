@@ -8,9 +8,6 @@
 #include <cxxabi.h>
 #include <utility>
 
-struct FirstSignal {};
-struct SecondSignal { public: int a = 16; };
-
 class SignalBus
 {
 
