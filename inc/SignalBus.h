@@ -74,7 +74,6 @@ public:
 
         for(auto &Subscriber : SubscribedFunctions[SignalName])
         {
-            void* wrapper = Subscriber.second;
             auto callback = std::any_cast<std::function<void(T)>>(Subscriber.second);
             callback(signal);
         }
