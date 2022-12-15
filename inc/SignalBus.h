@@ -20,6 +20,12 @@ private:
 public:
     ~SignalBus() = default;
 
+    static std::shared_ptr<SignalBus> GetSignalBus()
+    {
+        static std::shared_ptr<SignalBus> instance(new SignalBus);
+        return instance;
+    }
+
     template<typename T>
     void Subscribe(std::function<void(T)> func, void *owner = nullptr)
     {
@@ -42,12 +48,6 @@ public:
     {
         std::string SignalName = GetSignalName<T>();
         uintptr_t owner_key = owner ? (uintptr_t)owner : 0;
-        if (SubscribedFunctions.find(SignalName) != SubscribedFunctions.end() &&
-            SubscribedFunctions[SignalName].find(owner_key) != SubscribedFunctions[SignalName].end())
-        {
-            SubscribedFunctions[SignalName].erase(owner_key);
-            std::cout << SignalName << " was removed for owner " << owner_key << "\n";
-        }
         if (SubscribedFunctions.find(SignalName) != SubscribedFunctions.end() &&
             SubscribedFunctions[SignalName].find(owner_key) != SubscribedFunctions[SignalName].end())
         {
@@ -77,12 +77,6 @@ public:
             auto callback = std::any_cast<std::function<void(T)>>(Subscriber.second);
             callback(signal);
         }
-    }
-
-    static std::shared_ptr<SignalBus> GetSignalBus()
-    {
-        static std::shared_ptr<SignalBus> instance(new SignalBus);
-        return instance;
     }
 
 private:
