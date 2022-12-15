@@ -11,7 +11,7 @@ public:
         auto sb = SignalBus::GetSignalBus();
         sb->Subscribe<FirstSignal>([&] { MethodA(); }, this);
 
-        sb->SubscribeWithData<SecondSignal>([&](SecondSignal signal) {
+        sb->Subscribe<SecondSignal>([&](SecondSignal signal) {
             MethodB(signal);
         }, this);
     }

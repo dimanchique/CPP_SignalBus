@@ -38,7 +38,7 @@ public:
     }
 
     template<typename T>
-    void SubscribeWithData(std::function<void(T)> func, void *owner = nullptr)
+    void Subscribe(std::function<void(T)> func, void *owner = nullptr)
     {
         std::string SignalName = GetSignalName<T>();
         uintptr_t owner_key = owner ? (uintptr_t)owner : 0;
@@ -50,7 +50,7 @@ public:
             throw std::logic_error(err.str() + std::string("Double subscription error"));
         }
 
-        SubscribedFunctionsWithData[SignalName][owner_key] = func;
+        SubscribedFunctionsWithData[SignalName][owner_key] = std::move(func);
         std::cout << SignalName << " was added for owner " << owner_key << "\n";
     }
 
@@ -59,6 +59,12 @@ public:
     {
         std::string SignalName = GetSignalName<T>();
         uintptr_t owner_key = owner ? (uintptr_t)owner : 0;
+        if (SubscribedFunctions.find(SignalName) != SubscribedFunctions.end() &&
+            SubscribedFunctions[SignalName].find(owner_key) != SubscribedFunctions[SignalName].end())
+        {
+            SubscribedFunctions[SignalName].erase(owner_key);
+            std::cout << SignalName << " was removed for owner " << owner_key << "\n";
+        }
         if (SubscribedFunctions.find(SignalName) != SubscribedFunctions.end() &&
             SubscribedFunctions[SignalName].find(owner_key) != SubscribedFunctions[SignalName].end())
         {
@@ -82,7 +88,7 @@ public:
     }
 
     template<typename T>
-    void FireWithData(T signal)
+    void Fire(T signal)
     {
         std::string SignalName = GetSignalName<T>();
         if (SubscribedFunctionsWithData.find(SignalName) == SubscribedFunctionsWithData.end())
@@ -93,23 +99,24 @@ public:
 
         for(auto &Subscriber : SubscribedFunctionsWithData[SignalName])
         {
-            auto func = std::any_cast<std::function<void(T)>>(Subscriber.second);
-            std::invoke(func, signal);
+            auto callback = std::any_cast<std::function<void(T)>>(Subscriber.second);
+            callback(signal);
         }
-    }
-
-    template<typename T>
-    static std::string GetSignalName()
-    {
-        int status;
-        char * SignalName = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
-        return SignalName;
     }
 
     static std::shared_ptr<SignalBus> GetSignalBus()
     {
         static std::shared_ptr<SignalBus> instance(new SignalBus);
         return instance;
+    }
+
+private:
+    template<typename T>
+    static std::string GetSignalName()
+    {
+        int status;
+        char * SignalName = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
+        return SignalName;
     }
 
 private:

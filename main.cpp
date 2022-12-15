@@ -9,11 +9,11 @@ int main() {
     auto A2 = ClassA();
     auto A3 = ClassA();
     auto B = ClassB();
-    SignalBus->FireWithData(SecondSignal{});
+    SignalBus->Fire(SecondSignal{});
     SignalBus->Fire<FirstSignal>();
 
     SecondSignal a = {13};
-    SignalBus->FireWithData(a);
+    SignalBus->Fire(a);
     SignalBus->Fire<FirstSignal>();
     return 0;
 }
