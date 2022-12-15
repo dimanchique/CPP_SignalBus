@@ -9,8 +9,7 @@ public:
         static int ID = 0;
         EntityID = ID++;
         auto sb = SignalBus::GetSignalBus();
-        sb->Subscribe<FirstSignal>([&] { MethodA(); }, this);
-
+        sb->Subscribe<FirstSignal>([&](FirstSignal signal) { MethodA(); }, this);
         sb->Subscribe<SecondSignal>([&](SecondSignal signal) {
             MethodB(signal);
         }, this);

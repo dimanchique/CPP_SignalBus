@@ -21,7 +21,7 @@ public:
     ~SignalBus() = default;
 
     template<typename T>
-    void Subscribe(std::function<void()> func, void *owner = nullptr)
+    void Subscribe(std::function<void(T)> func, void *owner = nullptr)
     {
         std::string SignalName = GetSignalName<T>();
         uintptr_t owner_key = owner ? (uintptr_t)owner : 0;
@@ -34,23 +34,6 @@ public:
         }
 
         SubscribedFunctions[SignalName][owner_key] = std::move(func);
-        std::cout << SignalName << " was added for owner " << owner_key << "\n";
-    }
-
-    template<typename T>
-    void Subscribe(std::function<void(T)> func, void *owner = nullptr)
-    {
-        std::string SignalName = GetSignalName<T>();
-        uintptr_t owner_key = owner ? (uintptr_t)owner : 0;
-
-        if (SubscribedFunctionsWithData[SignalName].find(owner_key) != SubscribedFunctionsWithData[SignalName].end())
-        {
-            std::ostringstream err;
-            err << owner_key << " is already subscribed to " << SignalName << ". ";
-            throw std::logic_error(err.str() + std::string("Double subscription error"));
-        }
-
-        SubscribedFunctionsWithData[SignalName][owner_key] = std::move(func);
         std::cout << SignalName << " was added for owner " << owner_key << "\n";
     }
 
@@ -76,6 +59,12 @@ public:
     template<typename T>
     void Fire()
     {
+        Fire(T());
+    }
+
+    template<typename T>
+    void Fire(T signal)
+    {
         std::string SignalName = GetSignalName<T>();
         if (SubscribedFunctions.find(SignalName) == SubscribedFunctions.end())
         {
@@ -84,21 +73,8 @@ public:
         }
 
         for(auto &Subscriber : SubscribedFunctions[SignalName])
-            Subscriber.second();
-    }
-
-    template<typename T>
-    void Fire(T signal)
-    {
-        std::string SignalName = GetSignalName<T>();
-        if (SubscribedFunctionsWithData.find(SignalName) == SubscribedFunctionsWithData.end())
         {
-            std::cout << SignalName << " wasn't found\n";
-            return;
-        }
-
-        for(auto &Subscriber : SubscribedFunctionsWithData[SignalName])
-        {
+            void* wrapper = Subscriber.second;
             auto callback = std::any_cast<std::function<void(T)>>(Subscriber.second);
             callback(signal);
         }
@@ -120,6 +96,5 @@ private:
     }
 
 private:
-    std::unordered_map<std::string, std::unordered_map<uintptr_t, std::function<void()>>> SubscribedFunctions;
-    std::unordered_map<std::string, std::unordered_map<uintptr_t, std::any>> SubscribedFunctionsWithData;
+    std::unordered_map<std::string, std::unordered_map<uintptr_t, std::any>> SubscribedFunctions;
 };
