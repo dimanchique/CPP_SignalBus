@@ -11,21 +11,21 @@ public:
         auto sb = SignalBus::GetSignalBus();
         sb->Subscribe<FirstSignal>([&] { MethodA(); }, this);
 
-        sb->SubscribeWithData<SecondSignal>([&](void* signal) {
-            auto data = (SecondSignal*) signal;
-            MethodB(*data);
+        sb->SubscribeWithData<SecondSignal>([&](SecondSignal signal) {
+            MethodB(signal);
         }, this);
     }
 
     void MethodA() const
     {
-        std::cout<< "MethodA called for object ClassA " << EntityID << "\n";
+        std::cout<< "MethodA called for object ClassA " << EntityID << ". Flag: " << flag << "\n";
     }
 
-    static void MethodB(SecondSignal signal)
+    void MethodB(SecondSignal signal)
     {
-        std::cout << signal.a << "\n";
+        flag = signal.a;
     }
 
     int EntityID;
+    int flag = 0;
 };

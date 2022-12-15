@@ -10,5 +10,10 @@ int main() {
     auto A3 = ClassA();
     auto B = ClassB();
     SignalBus->FireWithData(SecondSignal{});
+    SignalBus->Fire<FirstSignal>();
+
+    SecondSignal a = {13};
+    SignalBus->FireWithData(a);
+    SignalBus->Fire<FirstSignal>();
     return 0;
 }

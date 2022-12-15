@@ -8,8 +8,8 @@
 #include <cxxabi.h>
 #include <utility>
 
-class FirstSignal {};
-class SecondSignal { public: int a = 16; };
+struct FirstSignal {};
+struct SecondSignal { public: int a = 16; };
 
 class SignalBus
 {
@@ -50,7 +50,7 @@ public:
             throw std::logic_error(err.str() + std::string("Double subscription error"));
         }
 
-        SubscribedFunctionsWithData[SignalName][owner_key] = std::move(func);
+        SubscribedFunctionsWithData[SignalName][owner_key] = func;
         std::cout << SignalName << " was added for owner " << owner_key << "\n";
     }
 
@@ -91,9 +91,11 @@ public:
             return;
         }
 
-        void* wrapped_data = &signal;
         for(auto &Subscriber : SubscribedFunctionsWithData[SignalName])
-            Subscriber.second(wrapped_data);
+        {
+            auto func = std::any_cast<std::function<void(T)>>(Subscriber.second);
+            std::invoke(func, signal);
+        }
     }
 
     template<typename T>
@@ -112,5 +114,5 @@ public:
 
 private:
     std::unordered_map<std::string, std::unordered_map<uintptr_t, std::function<void()>>> SubscribedFunctions;
-    std::unordered_map<std::string, std::unordered_map<uintptr_t, std::function<void(void*)>>> SubscribedFunctionsWithData;
+    std::unordered_map<std::string, std::unordered_map<uintptr_t, std::any>> SubscribedFunctionsWithData;
 };

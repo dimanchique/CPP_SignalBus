@@ -1,3 +1,0 @@
-F:/SoftwareProjects/C-Cpp/SignalBus/cmake-build-debug/CMakeFiles/SignalBus.dir
-F:/SoftwareProjects/C-Cpp/SignalBus/cmake-build-debug/CMakeFiles/edit_cache.dir
-F:/SoftwareProjects/C-Cpp/SignalBus/cmake-build-debug/CMakeFiles/rebuild_cache.dir
