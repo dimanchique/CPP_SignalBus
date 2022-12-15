@@ -26,10 +26,12 @@ public:
     template<typename T>
     void Subscribe(std::function<void(T)> func, void *owner = nullptr)
     {
-        std::string SignalName = GetSignalName<T>();
-        uintptr_t owner_key = owner ? (uintptr_t)owner : 0;
+        std::string SignalName;
+        uintptr_t owner_key;
 
-        if (SubscribedFunctions[SignalName].find(owner_key) != SubscribedFunctions[SignalName].end())
+        GetEventNameAndUId<T>(SignalName, owner_key, owner);
+
+        if (IsEventExists(SignalName))
         {
             std::ostringstream err;
             err << owner_key << " is already subscribed to " << SignalName << ". ";
@@ -43,10 +45,11 @@ public:
     template<typename T>
     void Unsubscribe(void *owner = nullptr)
     {
-        std::string SignalName = GetSignalName<T>();
-        uintptr_t owner_key = owner ? (uintptr_t)owner : 0;
-        if (SubscribedFunctions.find(SignalName) != SubscribedFunctions.end() &&
-            SubscribedFunctions[SignalName].find(owner_key) != SubscribedFunctions[SignalName].end())
+        std::string SignalName;
+        uintptr_t owner_key;
+
+        GetEventNameAndUId<T>(&SignalName, &owner_key, owner);
+        if (IsEventExistsForOwner(SignalName, owner_key))
         {
             SubscribedFunctions[SignalName].erase(owner_key);
             std::cout << SignalName << " was removed for owner " << owner_key << "\n";
@@ -62,8 +65,10 @@ public:
     template<typename T>
     void Fire(T signal)
     {
-        std::string SignalName = GetSignalName<T>();
-        if (SubscribedFunctions.find(SignalName) == SubscribedFunctions.end())
+        std::string SignalName;
+        GetEventName<T>(SignalName);
+
+        if (!IsEventExists(SignalName))
         {
             std::cout << SignalName << " wasn't found\n";
             return;
@@ -78,11 +83,33 @@ public:
 
 private:
     template<typename T>
-    static std::string GetSignalName()
+    static void GetEventNameAndUId(std::string &out_name, uintptr_t &out_uid, void* owner = nullptr)
+    {
+        GetEventName<T>(out_name);
+        out_uid = owner ? (uintptr_t)owner : 0;
+    }
+
+    template<typename T>
+    static void GetEventName(std::string &out_name)
     {
         int status;
         char * SignalName = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
-        return SignalName;
+        out_name = SignalName;
+    }
+
+    bool IsEventExists(std::string &event_name)
+    {
+        return SubscribedFunctions.find(event_name) != SubscribedFunctions.end();
+    }
+
+    bool IsOwnerSubscribed(std::string &event_name, uintptr_t &owner_key)
+    {
+        return SubscribedFunctions[event_name].find(owner_key) != SubscribedFunctions[event_name].end();
+    }
+
+    bool IsEventExistsForOwner(std::string &event_name, uintptr_t &owner_key)
+    {
+        return !IsEventExists(event_name) && IsOwnerSubscribed(event_name, owner_key);
     }
 
 private:

@@ -10,24 +10,17 @@ class File
 
 public:
 
-    static std::shared_ptr<File> CreateNewFile(std::string name)
+    explicit File(std::string name)
     {
-        return std::shared_ptr<File>(new File(std::move(name)));
+        filename = std::move(name);
+        auto sb = SignalBus::GetSignalBus();
+        sb->Fire(FileCreatedEvent(filename));
     }
 
     ~File()
     {
         auto sb = SignalBus::GetSignalBus();
         sb->Fire(FileRemovedEvent(filename));
-    }
-
-private:
-
-    explicit File(std::string name)
-    {
-        filename = std::move(name);
-        auto sb = SignalBus::GetSignalBus();
-        sb->Fire(FileCreatedEvent(filename));
     }
 
     std::string filename;
