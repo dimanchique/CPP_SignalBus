@@ -5,8 +5,7 @@
 #include "iostream"
 #include "unordered_map"
 #include "functional"
-#include <cxxabi.h>
-#include <utility>
+#include "typeinfo"
 
 class SignalBus
 {
@@ -17,21 +16,23 @@ private:
 public:
     ~SignalBus() = default;
 
+    ///Access to static SignalBus instance
     static std::shared_ptr<SignalBus> GetSignalBus()
     {
         static std::shared_ptr<SignalBus> instance(new SignalBus);
         return instance;
     }
 
+    ///Subscribe owner to event T using callback
     template<typename T>
     void Subscribe(std::function<void(T)> func, void *owner = nullptr)
     {
         std::string SignalName;
         uintptr_t owner_key;
 
-        GetEventNameAndUId<T>(SignalName, owner_key, owner);
+        GetEventNameAndOwnerId<T>(SignalName, owner_key, owner);
 
-        if (IsEventExists(SignalName))
+        if (IsEventExist(SignalName))
         {
             std::ostringstream err;
             err << owner_key << " is already subscribed to " << SignalName << ". ";
@@ -39,36 +40,40 @@ public:
         }
 
         SubscribedFunctions[SignalName][owner_key] = std::move(func);
-        std::cout << SignalName << " was added for owner " << owner_key << "\n";
+        std::cout << "Object " << owner_key << " subscribed to signal " << SignalName << "\n";
     }
 
+    ///Unsubscribe owner from event T
     template<typename T>
     void Unsubscribe(void *owner = nullptr)
     {
         std::string SignalName;
         uintptr_t owner_key;
 
-        GetEventNameAndUId<T>(&SignalName, &owner_key, owner);
-        if (IsEventExistsForOwner(SignalName, owner_key))
+        GetEventNameAndOwnerId<T>(&SignalName, &owner_key, owner);
+
+        if (IsEventExistForOwner(SignalName, owner_key))
         {
             SubscribedFunctions[SignalName].erase(owner_key);
             std::cout << SignalName << " was removed for owner " << owner_key << "\n";
         }
     }
 
+    ///Send empty signal T via SignalBus
     template<typename T>
     void Fire()
     {
         Fire(T());
     }
 
+    ///Send loaded signal T via SignalBus
     template<typename T>
     void Fire(T signal)
     {
         std::string SignalName;
         GetEventName<T>(SignalName);
 
-        if (!IsEventExists(SignalName))
+        if (!IsEventExist(SignalName))
         {
             std::cout << SignalName << " wasn't found\n";
             return;
@@ -83,33 +88,36 @@ public:
 
 private:
     template<typename T>
-    static void GetEventNameAndUId(std::string &out_name, uintptr_t &out_uid, void* owner = nullptr)
+    static void GetEventNameAndOwnerId(std::string &out_name, uintptr_t &out_uid, void* owner = nullptr)
     {
         GetEventName<T>(out_name);
-        out_uid = owner ? (uintptr_t)owner : 0;
+        GetOwnerId(out_uid, owner);
     }
 
     template<typename T>
-    static void GetEventName(std::string &out_name)
+    inline static void GetEventName(std::string &out_name)
     {
-        int status;
-        char * SignalName = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
-        out_name = SignalName;
+        out_name = typeid(T).name();
     }
 
-    bool IsEventExists(std::string &event_name)
+    inline static void GetOwnerId(uintptr_t &out_uid, void* owner = nullptr)
+    {
+        out_uid = owner ? (uintptr_t)owner : 0;
+    }
+
+    inline bool IsEventExist(std::string &event_name)
     {
         return SubscribedFunctions.find(event_name) != SubscribedFunctions.end();
     }
 
-    bool IsOwnerSubscribed(std::string &event_name, uintptr_t &owner_key)
+    inline bool IsOwnerSubscribed(std::string &event_name, uintptr_t &owner_key)
     {
         return SubscribedFunctions[event_name].find(owner_key) != SubscribedFunctions[event_name].end();
     }
 
-    bool IsEventExistsForOwner(std::string &event_name, uintptr_t &owner_key)
+    inline bool IsEventExistForOwner(std::string &event_name, uintptr_t &owner_key)
     {
-        return !IsEventExists(event_name) && IsOwnerSubscribed(event_name, owner_key);
+        return !IsEventExist(event_name) && IsOwnerSubscribed(event_name, owner_key);
     }
 
 private:

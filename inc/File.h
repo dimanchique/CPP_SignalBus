@@ -14,13 +14,13 @@ public:
     {
         filename = std::move(name);
         auto sb = SignalBus::GetSignalBus();
-        sb->Fire(FileCreatedEvent(filename));
+        sb->Fire(FileCreatedEvent(filename.data()));
     }
 
     ~File()
     {
         auto sb = SignalBus::GetSignalBus();
-        sb->Fire(FileRemovedEvent(filename));
+        sb->Fire(FileRemovedEvent(filename.data()));
     }
 
     std::string filename;
