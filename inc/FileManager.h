@@ -18,14 +18,14 @@ private:
     {
         auto sb = SignalBus::GetSignalBus();
         sb->Subscribe<FileCreatedEvent>([&](auto event){
-            std::cout << "New file created: " << event.filename << "\n";
-            last_created_file = event.filename;
             opened_files_count++;
+            std::cout << "New file created: " << event.filename << "Files opened: " << opened_files_count << "\n";
+            last_created_file = event.filename;
             }, this);
 
         sb->Subscribe<FileRemovedEvent>([&](auto event){
-            std::cout << "File was removed: " << event.filename << "\n";
             opened_files_count--;
+            std::cout << "File was removed: " << event.filename << "Files opened: " << opened_files_count << "\n";
             }, this);
     }
     std::string last_created_file;
