@@ -27,8 +27,11 @@ public:
 
     ///Subscribe owner to event T using callback
     template<typename T>
-    void Subscribe(std::function<void(T)> func, void *owner = nullptr)
+    void Subscribe(std::function<void(T)> func, void *owner)
     {
+        if (!owner)
+            return;
+
         std::string SignalName;
         uintptr_t owner_key;
 
@@ -100,7 +103,7 @@ public:
 
 private:
     template<typename T>
-    static void GetEventNameAndOwnerId(std::string &out_name, uintptr_t &out_uid, void* owner = nullptr)
+    static void GetEventNameAndOwnerId(std::string &out_name, uintptr_t &out_uid, void* owner)
     {
         GetEventName<T>(out_name);
         GetOwnerId(out_uid, owner);
@@ -112,9 +115,9 @@ private:
         out_name = typeid(T).name();
     }
 
-    inline static void GetOwnerId(uintptr_t &out_uid, void* owner = nullptr)
+    inline static void GetOwnerId(uintptr_t &out_uid, void* owner)
     {
-        out_uid = owner ? (uintptr_t)owner : 0;
+        out_uid = (uintptr_t)owner;
     }
 
     inline bool IsEventExist(std::string &event_name)
