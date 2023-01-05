@@ -1,4 +1,6 @@
 #pragma once
+
+#include <typeindex>
 #include "any"
 #include "memory"
 #include "sstream"
@@ -43,6 +45,12 @@ public:
         std::cout << "Object " << owner_key << " subscribed to signal " << SignalName << "\n";
     }
 
+    template <typename T, typename ObjectType>
+    void Subscribe(void (ObjectType::*member_func)(T), ObjectType* owner)
+    {
+        Subscribe<T>([member_func, owner](T e) { (owner->*member_func)(e); }, owner);
+    }
+
     ///Unsubscribe owner from event T
     template<typename T>
     void Unsubscribe(void *owner = nullptr)
@@ -81,8 +89,12 @@ public:
 
         for(auto &Subscriber : SubscribedFunctions[SignalName])
         {
-            auto callback = std::any_cast<std::function<void(T)>>(Subscriber.second);
-            callback(signal);
+            std::any& callable = Subscriber.second;
+            // Check if the callable is a std::function object
+            if (auto* lambda = std::any_cast<std::function<void(T)>>(&callable))
+            {
+                (*lambda)(signal);
+            }
         }
     }
 
