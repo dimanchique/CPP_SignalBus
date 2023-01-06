@@ -91,12 +91,8 @@ public:
         for (auto &Subscriber: SubscribedFunctions[EventHash]) {
             std::any &callable = Subscriber.second;
             if (auto *lambda = std::any_cast<std::function<void(T)>>(&callable)) {
-                try {
-                    (*lambda)(signal);
-                }
-                catch (std::exception &e) {
-                    continue;
-                }
+                try { (*lambda)(signal); }
+                catch (std::exception &e){}
             }
         }
     }
