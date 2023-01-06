@@ -7,15 +7,14 @@
 #include <iostream>
 #include <any>
 
-class SignalBus
-{
+#define SignalBusDebug
+
+class SignalBus {
 
 private:
     SignalBus() = default;
 
 public:
-    ~SignalBus() = default;
-
     ///Access to static SignalBus instance
     static std::shared_ptr<SignalBus> GetSignalBus()
     {
@@ -23,51 +22,57 @@ public:
         return instance;
     }
 
-    ///Subscribe owner to event T using callback
+    ///Subscribe owner to event T using lambda callback
     template<typename T>
     void Subscribe(std::function<void(T)> func, void* owner)
     {
         if (!owner)
-            return;
+            throw std::logic_error("Calling Subscribe method with nullptr owner");
 
-        std::string SignalName;
-        uintptr_t owner_key;
+        const auto EventHash = GetEventHash<T>();
+        const auto OwnerID = GetOwnerId(owner);
 
-        GetEventNameAndOwnerId<T>(SignalName, owner_key, owner);
+        if (IsOwnerSubscribed(EventHash, OwnerID))
+            throw std::logic_error("Object " + std::to_string(OwnerID) + " is already subscribed to event " +
+                                   std::to_string(EventHash) + ". Double subscription error.");
 
-        if (IsEventExist(SignalName))
-        {
-            std::string err = "Object " + std::to_string(owner_key) + " is already subscribed to " + SignalName + ". Double subscription error.";
-            throw std::logic_error(err);
-        }
-
-        SubscribedFunctions[SignalName][owner_key] = std::move(func);
-        std::cout << "Object " << owner_key << " subscribed to signal " << SignalName << "\n";
+        SubscribedFunctions[EventHash][OwnerID] = std::move(func);
+#ifdef SignalBusDebug
+        std::cout << "Object " << OwnerID << " subscribed to event " << EventHash << "\n";
+#endif
     }
 
-    template <typename T, typename ObjectType>
-    void Subscribe(void (ObjectType::*member_func)(T), ObjectType* owner)
+    ///Subscribe owner to event T using class member function callback
+    template<typename T, typename ObjectType>
+    void Subscribe(void (ObjectType::*func)(T), ObjectType* owner)
     {
-        Subscribe<T>([member_func, owner](T e) { (owner->*member_func)(e); }, owner);
+        Subscribe<T>([func, owner](T payload) { (owner->*func)(payload); }, owner);
     }
 
     ///Unsubscribe owner from event T
     template<typename T>
     void Unsubscribe(void *owner)
     {
-        std::string SignalName;
-        uintptr_t owner_key;
+        const auto EventHash = GetEventHash<T>();
+        const auto OwnerID = GetOwnerId(owner);
 
-        GetEventNameAndOwnerId<T>(&SignalName, &owner_key, owner);
+        if (!IsEventExistForOwner(EventHash, OwnerID))
+            return;
 
-        if (IsEventExistForOwner(SignalName, owner_key))
+        SubscribedFunctions[EventHash].erase(OwnerID);
+#ifdef SignalBusDebug
+        std::cout << "Object " << OwnerID << " unsubscribed from event " << EventHash << "\n";
+#endif
+        if (SubscribedFunctions[EventHash].empty())
         {
-            SubscribedFunctions[SignalName].erase(owner_key);
-            std::cout << SignalName << " was removed for owner " << owner_key << "\n";
+#ifdef SignalBusDebug
+            std::cout << "No more subscribers for event " << EventHash << "\n";
+#endif
+            SubscribedFunctions.erase(EventHash);
         }
     }
 
-    ///Send signal T
+    ///Send empty signal T
     template<typename T>
     void Fire()
     {
@@ -78,34 +83,29 @@ public:
     template<typename T>
     void Fire(T signal)
     {
-        const auto SignalName = GetEventName<T>();
+        const auto EventHash = GetEventHash<T>();
 
-        if (!IsEventExist(SignalName))
-        {
-            std::cout << SignalName << " wasn't found\n";
+        if (!IsEventExist(EventHash))
             return;
-        }
 
-        for(auto &Subscriber : SubscribedFunctions[SignalName])
-        {
-            std::any& callable = Subscriber.second;
-            if (auto* lambda = std::any_cast<std::function<void(T)>>(&callable))
-                (*lambda)(signal);
+        for (auto &Subscriber: SubscribedFunctions[EventHash]) {
+            std::any &callable = Subscriber.second;
+            if (auto *lambda = std::any_cast<std::function<void(T)>>(&callable)) {
+                try {
+                    (*lambda)(signal);
+                }
+                catch (std::exception &e) {
+                    continue;
+                }
+            }
         }
     }
 
 private:
     template<typename T>
-    static void GetEventNameAndOwnerId(std::string &out_name, uintptr_t &out_uid, void* owner)
+    inline static size_t GetEventHash()
     {
-        out_name = GetEventName<T>();
-        out_uid = GetOwnerId(owner);
-    }
-
-    template<typename T>
-    inline static std::string GetEventName()
-    {
-        return typeid(T).name();
+        return typeid(T).hash_code();
     }
 
     inline static uintptr_t GetOwnerId(const void* owner)
@@ -113,21 +113,21 @@ private:
         return (uintptr_t)owner;
     }
 
-    inline bool IsEventExist(const std::string &event_name)
+    inline bool IsEventExist(const size_t &event_name) const
     {
         return SubscribedFunctions.find(event_name) != SubscribedFunctions.end();
     }
 
-    inline bool IsOwnerSubscribed(const std::string &event_name, const uintptr_t &owner_key)
+    inline bool IsOwnerSubscribed(const size_t &event_name, const uintptr_t &owner_key)
     {
         return SubscribedFunctions[event_name].find(owner_key) != SubscribedFunctions[event_name].end();
     }
 
-    inline bool IsEventExistForOwner(const std::string &event_name, const uintptr_t &owner_key)
+    inline bool IsEventExistForOwner(const size_t &event_name, const uintptr_t &owner_key)
     {
-        return !IsEventExist(event_name) && IsOwnerSubscribed(event_name, owner_key);
+        return IsEventExist(event_name) && IsOwnerSubscribed(event_name, owner_key);
     }
 
 private:
-    std::unordered_map<std::string, std::unordered_map<uintptr_t, std::any>> SubscribedFunctions;
+    std::unordered_map<size_t, std::unordered_map<uintptr_t, std::any>> SubscribedFunctions;
 };

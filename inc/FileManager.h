@@ -13,21 +13,29 @@ public:
         return instance;
     }
 
+    ~FileManager()
+    {
+        auto sb = SignalBus::GetSignalBus();
+        sb->Unsubscribe<FileCreatedEvent>(this);
+        sb->Unsubscribe<FileRemovedEvent>(this);
+    }
+
 private:
     FileManager()
     {
         auto sb = SignalBus::GetSignalBus();
-        sb->Subscribe<FileCreatedEvent>(&FileManager::FileCreatedEventHandler, this);
+        sb->Subscribe(&FileManager::FileCreatedEventHandler, this);
+        sb->Subscribe(&FileManager::FileRemovedEventHandler, this);
+    }
 
-        sb->Subscribe<FileRemovedEvent>([&](auto event){
-            opened_files_count--;
-            std::cout << "File was removed: " << event.filename << "Files opened: " << opened_files_count << "\n";
-            }, this);
+    void FileRemovedEventHandler(FileRemovedEvent event){
+        opened_files_count--;
+        std::cout << "File was removed: " << event.filename << ". Files opened: " << opened_files_count << "\n";
     }
 
     void FileCreatedEventHandler(FileCreatedEvent event){
         opened_files_count++;
-        std::cout << "New file created: " << event.filename << "Files opened: " << opened_files_count << "\n";
+        std::cout << "New file created: " << event.filename << ". Files opened: " << opened_files_count << "\n";
         last_created_file = event.filename;
     }
 
