@@ -1,13 +1,11 @@
 #pragma once
 
-#include <typeindex>
-#include "any"
-#include "memory"
-#include "sstream"
-#include "iostream"
-#include "unordered_map"
-#include "functional"
-#include "typeinfo"
+#include <memory>
+#include <functional>
+#include <string>
+#include <stdexcept>
+#include <iostream>
+#include <any>
 
 class SignalBus
 {
@@ -27,7 +25,7 @@ public:
 
     ///Subscribe owner to event T using callback
     template<typename T>
-    void Subscribe(std::function<void(T)> func, void *owner)
+    void Subscribe(std::function<void(T)> func, void* owner)
     {
         if (!owner)
             return;
@@ -39,9 +37,8 @@ public:
 
         if (IsEventExist(SignalName))
         {
-            std::ostringstream err;
-            err << owner_key << " is already subscribed to " << SignalName << ". ";
-            throw std::logic_error(err.str() + std::string("Double subscription error"));
+            std::string err = "Object " + std::to_string(owner_key) + " is already subscribed to " + SignalName + ". Double subscription error.";
+            throw std::logic_error(err);
         }
 
         SubscribedFunctions[SignalName][owner_key] = std::move(func);
@@ -56,7 +53,7 @@ public:
 
     ///Unsubscribe owner from event T
     template<typename T>
-    void Unsubscribe(void *owner = nullptr)
+    void Unsubscribe(void *owner)
     {
         std::string SignalName;
         uintptr_t owner_key;
@@ -70,19 +67,18 @@ public:
         }
     }
 
-    ///Send empty signal T via SignalBus
+    ///Send signal T
     template<typename T>
     void Fire()
     {
         Fire(T());
     }
 
-    ///Send loaded signal T via SignalBus
+    ///Send signal T
     template<typename T>
     void Fire(T signal)
     {
-        std::string SignalName;
-        GetEventName<T>(SignalName);
+        const auto SignalName = GetEventName<T>();
 
         if (!IsEventExist(SignalName))
         {
@@ -93,11 +89,8 @@ public:
         for(auto &Subscriber : SubscribedFunctions[SignalName])
         {
             std::any& callable = Subscriber.second;
-            // Check if the callable is a std::function object
             if (auto* lambda = std::any_cast<std::function<void(T)>>(&callable))
-            {
                 (*lambda)(signal);
-            }
         }
     }
 
@@ -105,32 +98,32 @@ private:
     template<typename T>
     static void GetEventNameAndOwnerId(std::string &out_name, uintptr_t &out_uid, void* owner)
     {
-        GetEventName<T>(out_name);
-        GetOwnerId(out_uid, owner);
+        out_name = GetEventName<T>();
+        out_uid = GetOwnerId(owner);
     }
 
     template<typename T>
-    inline static void GetEventName(std::string &out_name)
+    inline static std::string GetEventName()
     {
-        out_name = typeid(T).name();
+        return typeid(T).name();
     }
 
-    inline static void GetOwnerId(uintptr_t &out_uid, void* owner)
+    inline static uintptr_t GetOwnerId(const void* owner)
     {
-        out_uid = (uintptr_t)owner;
+        return (uintptr_t)owner;
     }
 
-    inline bool IsEventExist(std::string &event_name)
+    inline bool IsEventExist(const std::string &event_name)
     {
         return SubscribedFunctions.find(event_name) != SubscribedFunctions.end();
     }
 
-    inline bool IsOwnerSubscribed(std::string &event_name, uintptr_t &owner_key)
+    inline bool IsOwnerSubscribed(const std::string &event_name, const uintptr_t &owner_key)
     {
         return SubscribedFunctions[event_name].find(owner_key) != SubscribedFunctions[event_name].end();
     }
 
-    inline bool IsEventExistForOwner(std::string &event_name, uintptr_t &owner_key)
+    inline bool IsEventExistForOwner(const std::string &event_name, const uintptr_t &owner_key)
     {
         return !IsEventExist(event_name) && IsOwnerSubscribed(event_name, owner_key);
     }
