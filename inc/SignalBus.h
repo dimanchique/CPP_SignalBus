@@ -9,6 +9,23 @@
 
 #define SignalBusDebug
 
+class FunctionWrapper{
+public:
+    FunctionWrapper() = default;
+    explicit FunctionWrapper(std::any callback): callback(std::move(callback)){};
+
+    template<typename T>
+    void operator()(T signal){
+        if (auto *lambda = std::any_cast<std::function<void(T)>>(&callback)) {
+            try { (*lambda)(signal); }
+            catch (std::exception &e){}
+        }
+    }
+
+private:
+    std::any callback;
+};
+
 class SignalBus {
 
 private:
@@ -36,7 +53,7 @@ public:
             throw std::logic_error("Object " + std::to_string(OwnerID) + " is already subscribed to event " +
                                    std::to_string(EventHash) + ". Double subscription error.");
 
-        SubscribedFunctions[EventHash][OwnerID] = std::move(func);
+        SubscribedFunctions[EventHash][OwnerID] = std::move(FunctionWrapper(func));
 #ifdef SignalBusDebug
         std::cout << "Object " << OwnerID << " subscribed to event " << EventHash << "\n";
 #endif
@@ -88,13 +105,8 @@ public:
         if (!IsEventExist(EventHash))
             return;
 
-        for (auto &Subscriber: SubscribedFunctions[EventHash]) {
-            std::any &callable = Subscriber.second;
-            if (auto *lambda = std::any_cast<std::function<void(T)>>(&callable)) {
-                try { (*lambda)(signal); }
-                catch (std::exception &e){}
-            }
-        }
+        for (auto& [subscriber_uid, callback] : SubscribedFunctions[EventHash])
+            callback(signal);
     }
 
 private:
@@ -125,5 +137,5 @@ private:
     }
 
 private:
-    std::unordered_map<size_t, std::unordered_map<uintptr_t, std::any>> SubscribedFunctions;
+    std::unordered_map<size_t, std::unordered_map<uintptr_t, FunctionWrapper>> SubscribedFunctions;
 };
