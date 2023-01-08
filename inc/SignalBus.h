@@ -106,7 +106,9 @@ public:
             return;
 
         for (auto& [subscriber_uid, callback] : SubscribedFunctions[EventHash])
+        {
             callback(signal);
+        }
     }
 
 private:
