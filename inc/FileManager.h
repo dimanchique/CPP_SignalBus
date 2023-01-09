@@ -25,12 +25,10 @@ private:
     {
         auto sb = SignalBus::GetSignalBus();
         sb->Subscribe(&FileManager::FileCreatedEventHandler, this);
-        sb->Subscribe(&FileManager::FileRemovedEventHandler, this);
-    }
-
-    void FileRemovedEventHandler(FileRemovedEvent event){
-        opened_files_count--;
-        std::cout << "File was removed: " << event.filename << ". Files opened: " << opened_files_count << "\n";
+        sb->Subscribe<FileRemovedEvent>([&](auto t){
+            opened_files_count--;
+            std::cout << "File was removed: " << t.filename << ". Files opened: " << opened_files_count << "\n";
+        }, this);
     }
 
     void FileCreatedEventHandler(FileCreatedEvent event){
