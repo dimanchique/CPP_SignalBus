@@ -71,7 +71,7 @@ public:
         Unsubscribe(EventHash, OwnerID);
     }
 
-    ///Send empty signal T
+    ///Send signal T using default constructor
     template<typename T>
     void Fire()
     {
@@ -119,7 +119,7 @@ private:
         }
     }
 
-    ///Subscribe owner to event T using lambda callback
+    ///Subscribe owner to event T
     template<typename T>
     void Subscribe(std::function<void(T)> func, size_t EventHash, uintptr_t OwnerID)
     {
