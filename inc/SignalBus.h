@@ -59,7 +59,7 @@ public:
     template<typename T, typename ObjectType>
     void Subscribe(void (ObjectType::*func)(T), ObjectType* owner)
     {
-        Subscribe<T>([func, owner](T payload) { (owner->*func)(payload); }, owner);
+        Subscribe<T>(std::bind(func, owner, std::placeholders::_1), owner);
     }
 
     ///Unsubscribe owner from event T
