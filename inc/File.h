@@ -13,12 +13,12 @@ public:
     explicit File(std::string name)
     {
         filename = std::move(name);
-        SignalBus::GetSignalBus()->Fire(FileCreatedEvent(filename.data()));
+        SignalBus::fire(FileCreatedEvent(filename.data()));
     }
 
     ~File()
     {
-        SignalBus::GetSignalBus()->Fire(FileRemovedEvent(filename.data()));
+        SignalBus::fire(FileRemovedEvent(filename.data()));
     }
 
     std::string filename;
